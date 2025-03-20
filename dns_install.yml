@@ -1,0 +1,63 @@
+---
+- name: Install and configure DNS server (BIND9) on Ubuntu
+  hosts: web
+  become: yes  # 관리자 권한으로 실행
+  tasks:
+    # 1. apt 패키지 목록 갱신
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600  # 1시간 동안 유효한 캐시
+
+    # 2. BIND9 DNS 서버 설치
+    - name: Install BIND9 DNS server
+      apt:
+        name: bind9
+        state: present
+
+    # 3. BIND9 서비스 시작
+    - name: Ensure BIND9 is running
+      service:
+        name: bind9
+        state: started
+        enabled: yes  # 부팅 시 자동 시작
+
+    # 4. DNS 설정 파일 /etc/bind/named.conf.local 생성
+    - name: Configure named.conf.local for DNS zones
+      copy:
+        dest: /etc/bind/named.conf.local
+        content: |
+          // Configure zone for x.com
+          zone "x.com" {
+              type master;
+              file "/etc/bind/db.x.com";
+          };
+
+    # 5. DNS 데이터베이스 파일 생성
+    - name: Create zone database file for example.com
+      copy:
+        dest: /etc/bind/db.x.com
+        content: |
+          $TTL    604800
+          @       IN      SOA     ns1.x.com. admin.x.com. (
+                        2023022501  ; Serial
+                        86400      ; Refresh
+                        7200       ; Retry
+                        1209600    ; Expire
+                        86400 )    ; Minimum TTL
+
+          ; Name servers
+          @       IN      NS      ns1.x.com.
+
+          ; A records for name servers
+          ns1     IN      A       192.168.20.1
+
+          ; A record for example.com
+          www       IN      A       192.168.30.1
+
+    # 6. BIND9 서비스 재시작 (설정 적용)
+    - name: Restart BIND9 service
+      service:
+        name: bind9
+        state: restarted
+

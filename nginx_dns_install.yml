@@ -1,0 +1,83 @@
+---
+- name: install dns server
+  hosts: u22b
+  become: yes
+  tasks:
+
+    - name: cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 9600
+
+    - name: install apt dns
+      apt:
+          name: bind9
+          state: present
+
+    - name: bind9 running
+      service:
+        name: bind9
+        state: started
+        enabled: yes
+
+    - name: Configure dns zones
+      copy:
+        dest: /etc/bind/named.conf.local
+        content: |
+          zone "naver.com" {
+              type master;
+              file "/etc/bind/db.naver.com";
+          };
+
+    - name: create zone file for naver.com
+      copy:
+        dest: /etc/bind/db.naver.com
+        content: |
+          $TTL    604800
+          @       IN      SOA     ns.naver.com. admin.naver.com. (
+                        2023022501  ; Serial
+                        86400      ; Refresh
+                        7200       ; Retry
+                        1209600    ; Expire
+                        86400 )    ; Minimum TTL
+
+          @     IN      NS      ns.naver.com.
+          ns    IN      A       192.168.20.1
+          www   IN      A       192.168.30.1
+
+    - name: restart bind9
+      service:
+        name: bind9
+        state: restarted
+
+
+- name: install nginx
+  hosts: u22c
+  become: yes
+  tasks:
+
+    - name: update cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 9600
+
+    - name: install nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: nginx service start
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: insert text in index.html
+      copy:
+        dest: /var/www/html/index.html
+        content: Hello^^~!
+
+    - name: nginx service restart
+      service:
+        name: nginx
+        state: restarted
