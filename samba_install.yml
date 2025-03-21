@@ -1,67 +1,71 @@
+
 ---
-- name: Install and configure Samba server on Ubuntu
-  hosts: u22b
-  become: yes  # 관리자 권한으로 실행
+- name: Install Samba Server and Configure Samba User
+  hosts: web
+  become: yes
+  vars_prompt:
+    - name: "smb_password"
+      prompt: "Please enter the password for the Samba user"
+      private: yes  # 비밀번호를 숨김 처리
+
   tasks:
-    # 1. apt 패키지 목록 갱신
-    - name: Update apt cache
+    - name: Install Samba packages
       apt:
+        name:
+          - samba
+          - samba-common
+          - smbclient
+        state: present
         update_cache: yes
-        cache_valid_time: 3600  # 1시간 동안 유효한 캐시
 
-    - name: install python-3pip
-      apt:
-        name: python3-pip
+    - name: Ensure Samba service is started and enabled
+      service:
+        name: smbd
+        state: started
+        enabled: yes
+
+    - name: Create Samba user (smbuser)
+      user:
+        name: user1
+        password: "{{ smb_password | password_hash('sha512') }}"
         state: present
 
-    # 2. Passlib 설치 (password_hash 필터를 사용하려면 필요)
-    - name: Install passlib library
-      pip:
-        name: passlib
-        state: present
+    - name: Add Samba user to Samba database
+      expect:
+        command: smbpasswd -a user1
+        responses:
+          'New SMB password:': "{{ smb_password }}"
+          'Retype new SMB password:': "{{ smb_password }}"
+      args:
+        creates: /etc/samba/smbpasswd
 
-    # 3. Samba 서버 설치
-    - name: Install Samba server
-      apt:
-        name: samba
-        state: present
+    - name: Enable Samba user (smbuser)
+      command: smbpasswd -e user1
 
-    # 4. 공유 디렉토리 생성
-    - name: Create shared directory
-      file:
-        path: /humans
-        state: directory
-        mode: '0777'  # 모든 사용자에게 읽기, 쓰기, 실행 권한 부여
-
-    # 5. Samba 설정 파일 수정 (/etc/samba/smb.conf)
-    - name: Configure smb.conf for Samba shares
+    - name: Configure Samba share in smb.conf
       blockinfile:
         path: /etc/samba/smb.conf
+        marker: "# {ansible_managed} #"
         block: |
           [humans]
           path = /humans
           browseable = yes
           read only = no
-          guest ok = yes
-          create mask = 0777
-          directory mask = 0777
+          guest ok = no
+          valid users = user1
 
-    # 6. Samba 사용자 추가 (기본 사용자는 guest)
-    - name: Add Samba user (smbuser)
-      user:
-        name: user1
-        password: "{{ '123456' | password_hash('sha512') }}"  # 비밀번호를 해시로 처리
-        state: present
+    - name: Create shared directory for Samba
+      file:
+        path: /humans
+        state: directory
+        owner: root
+        group: sambashare
+        mode: '0775'
 
-    # 7. Samba 사용자 비밀번호 설정
-    - name: Set Samba password for smbuser
-      command: echo -e "123456\n123456" | smbpasswd -a -s user1
-      args:
-        creates: /etc/samba/smbpasswd
-
-    # 8. Samba 서비스 시작
-    - name: Ensure Samba services are running
-      service:
-        name: smbd
-        state: restarted
-        enabled: yes  # 부팅 시 자동 시작
+    - name: Set correct permissions for Samba shared directory
+      file:
+        path: /humans
+        recurse: yes
+        owner: user1
+        group: sambashare
+        mode: '0775'
