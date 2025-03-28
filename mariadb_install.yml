@@ -2,7 +2,7 @@
 - name: Install and configure MariaDB with Python3 and pip
   hosts: aws
   vars:
-    mysql_root_password: "1234"
+    mysql_root_password: "1234" # root 계정 비밀번호
   become: yes  # sudo 권한으로 실행
 
   tasks:
