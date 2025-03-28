@@ -43,7 +43,7 @@
         content: |
           [client]
           user=root
-          password="{{ mysql_root_password }}"
+          password= "{{ mysql_root_password }}"
         owner: root
         group: root
         mode: '0600'
