@@ -1,4 +1,3 @@
-Ansible Playbook 예시: install_nginx.yml
 ---
 - name: Install and configure Nginx on Ubuntu
   hosts: all
