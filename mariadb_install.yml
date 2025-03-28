@@ -1,6 +1,8 @@
 ---
 - name: Install and configure MariaDB with Python3 and pip
   hosts: aws
+  vars:
+    mysql_root_password: "1234"
   become: yes  # sudo 권한으로 실행
 
   tasks:
@@ -27,9 +29,9 @@
       mysql_user:
         name: root
         host: localhost
-        password: "1234"
+        password: "{{ mysql_root_password }}"
         login_user: root
-        login_password: "1234"
+        login_password: "{{ mysql_root_password }}"
         plugin: mysql_native_password
         state: present
         update_password: always
@@ -41,7 +43,7 @@
         content: |
           [client]
           user=root
-          password=1234
+          password="{{ mysql_root_password }}"
         owner: root
         group: root
         mode: '0600'
@@ -55,17 +57,17 @@
       mysql_user:
         name: root
         host: '%'
-        password: "1234"
+        password: "{{ mysql_root_password }}"
         priv: "*.*:ALL,GRANT"
         login_user: root
-        login_password: "1234"
+        login_password: "{{ mysql_root_password }}"
         state: present
 
     - name: Flush privileges to apply changes
       mysql_query:
         query: "FLUSH PRIVILEGES;"
         login_user: root
-        login_password: "1234"
+        login_password: "{{ mysql_root_password }}"
 
     - name: Change bind-address to allow remote connections
       lineinfile:
