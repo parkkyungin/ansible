@@ -80,11 +80,12 @@
         name: my_database
         state: present
 
-    - name: Allow MySQL port through UFW (fixed)
-      ufw:
-        rule: allow
-        port: '3306'
-        proto: tcp
+#    방화벽 오픈 필요시 # 제거
+#    - name: Allow MySQL port through UFW (fixed)
+#      ufw:
+#        rule: allow
+#        port: '3306'
+#        proto: tcp
 
   handlers:
     - name: Restart MariaDB
